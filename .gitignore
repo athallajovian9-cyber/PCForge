@@ -1,0 +1,12 @@
+# build junk, never shipped
+build/
+dist/
+__pycache__/
+*.pyc
+shell/bin/
+shell/obj/
+
+# the launcher's own scratch
+_launch_check.txt
+_shell_check.txt
+launcher.log

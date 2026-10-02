@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PCForge - build it, then find the wall</title>
+<style>
+	:root {
+		--bg:#0b0e14; --panel:#121722; --card:#161c2b; --border:#212b3d;
+		--cyan:#00e5ff; --text:#e2e8f0; --muted:#8290a6;
+		--green:#10b981; --red:#f43f5e; --amber:#f59e0b; --console:#06090e;
+	}
+	* { box-sizing:border-box; }
+	html,body { margin:0; height:100%; background:var(--bg); color:var(--text);
+		font-family:"Segoe UI",system-ui,sans-serif; font-size:13px; overflow:hidden; }
+	#head { display:flex; align-items:baseline; gap:14px; padding:10px 16px 8px;
+		border-bottom:1px solid var(--border); }
+	#head h1 { margin:0; font-size:17px; letter-spacing:2px; color:var(--cyan); font-weight:700; }
+	#head .sub { color:var(--muted); font-family:Consolas,monospace; font-size:11px; }
+	#head .money { margin-left:auto; font-family:Consolas,monospace; }
+	#head .money b { color:var(--green); font-size:16px; }
+	#main { display:grid; grid-template-columns:290px 300px 1fr 320px; gap:10px;
+		padding:10px 16px; height:calc(100% - 92px); }
+	.col { background:var(--panel); border:1px solid var(--border); border-radius:5px;
+		padding:10px; overflow:auto; }
+	.col h2 { margin:0 0 8px; font-size:10px; letter-spacing:1.5px; color:var(--muted);
+		text-transform:uppercase; font-weight:700; }
+	.slot { background:var(--card); border:1px solid var(--border); border-radius:4px;
+		padding:7px 9px; margin-bottom:6px; cursor:pointer; }
+	.slot:hover { border-color:var(--cyan); }
+	.slot.open { border-color:var(--cyan); }
+	.slothead { display:flex; justify-content:space-between; }
+	.slotlabel { font-size:9px; letter-spacing:1px; color:var(--muted); text-transform:uppercase; }
+	.slotprice { font-family:Consolas,monospace; font-size:10px; color:var(--green); }
+	.slotname { font-weight:600; margin:2px 0 1px; }
+	.slotspec { font-family:Consolas,monospace; font-size:10px; color:var(--muted); }
+	.market { margin:2px 0 8px; border-left:2px solid var(--cyan); padding-left:6px; }
+	.mrow { display:flex; gap:6px; align-items:baseline; padding:3px 4px; cursor:pointer;
+		border-radius:3px; font-size:11px; }
+	.mrow:hover { background:#1b2434; }
+	.mrow.current { opacity:.5; cursor:default; }
+	.mname { flex:1; }
+	.msub { font-family:Consolas,monospace; font-size:9px; color:var(--muted); }
+	.mcost { font-family:Consolas,monospace; font-size:10px; color:var(--amber); min-width:56px;
+		text-align:right; }
+	#goalrow { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+	#goaltrack { flex:1; height:6px; background:#0b0f16; border-radius:3px; overflow:hidden; }
+	#goalbar { height:100%; width:0; background:var(--green); }
+	#board { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+	.wl { background:var(--card); border:1px solid var(--border); border-radius:4px;
+		padding:8px 10px; cursor:pointer; }
+	.wl.good { border-left:3px solid var(--green); }
+	.wl.bad { border-left:3px solid var(--red); }
+	.wl.sel { border-color:var(--cyan); }
+	.wlname { font-weight:600; }
+	.wlnum { font-family:Consolas,monospace; font-size:20px; color:var(--text); }
+	.wlnum .unit { font-size:10px; color:var(--muted); margin-left:3px; }
+	.wlt { font-family:Consolas,monospace; font-size:10px; color:var(--muted); }
+	.calc { display:flex; justify-content:space-between; font-family:Consolas,monospace;
+		font-size:11px; padding:2px 0; border-bottom:1px dotted #1d2637; }
+	.calc span { color:var(--muted); }
+	.calc b { font-weight:600; }
+	.calc.total { border-bottom:1px solid var(--border); border-top:1px solid var(--border);
+		margin:3px 0; padding:4px 0; }
+	.calc.over b { color:var(--red); }
+	.calc.under b { color:var(--green); }
+	.note { font-size:11px; padding:4px 6px; border-radius:3px; margin-top:5px;
+		border-left:3px solid var(--muted); background:#101725; }
+	.note.bad { border-left-color:var(--red); }
+	.note.warn { border-left-color:var(--amber); }
+	.note.good { border-left-color:var(--green); }
+	#post { display:none; background:#2a0d13; border:1px solid var(--red);
+		border-radius:4px; padding:6px 8px; margin-bottom:8px; font-size:11px; color:#fda4af; }
+	.mgroup { font-size:9px; letter-spacing:1px; color:var(--cyan); text-transform:uppercase;
+		margin:6px 0 2px; }
+	.mrow.mismatch .mcost { color:var(--red); }
+	#vrambar { width:100%; height:40px; background:var(--console); border-radius:3px;
+		margin:8px 0; display:block; }
+	.wgroup { font-size:9px; letter-spacing:1px; color:var(--muted); text-transform:uppercase;
+		margin:7px 0 4px; }
+	.wcard { background:var(--card); border:1px solid var(--border); border-radius:4px;
+		padding:6px 8px; margin-bottom:5px; }
+	.wcard.active { border-color:var(--green); background:#0e1a15; }
+	.wcard.locked { opacity:.42; }
+	.wtop { display:flex; justify-content:space-between; gap:6px; align-items:baseline; }
+	.wname { font-weight:600; font-size:12px; }
+	.wpay { font-family:Consolas,monospace; font-size:11px; color:var(--green); }
+	.wsub { font-family:Consolas,monospace; font-size:9.5px; color:var(--muted); margin-top:1px; }
+	.wblurb { font-size:10px; color:var(--muted); margin-top:3px; line-height:1.3; }
+	.wbtn { background:#1e293b; color:var(--text); border:1px solid var(--border);
+		border-radius:3px; padding:2px 9px; font-size:10px; cursor:pointer; margin-top:4px; }
+	.wbtn:hover { border-color:var(--cyan); color:var(--cyan); }
+	.wbtn.on { border-color:var(--red); color:var(--red); }
+	.wprog { height:3px; background:#0b0f16; border-radius:2px; overflow:hidden; margin-top:4px; }
+	.wprog i { display:block; height:100%; background:var(--green); }
+	#controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+		padding:0 16px 8px; font-size:11px; }
+	select { background:var(--console); color:var(--text); border:1px solid var(--border);
+		border-radius:3px; padding:3px 6px; font-family:Consolas,monospace; }
+	label { color:var(--muted); }
+	button { background:#1e293b; color:var(--text); border:1px solid var(--border);
+		border-radius:3px; padding:4px 12px; cursor:pointer; font-size:11px; }
+	button:hover { border-color:var(--cyan); color:var(--cyan); }
+	#log { height:104px; overflow:auto; background:var(--console); border:1px solid var(--border);
+		border-radius:4px; padding:6px 8px; font-family:Consolas,monospace; font-size:10px;
+		position:absolute; bottom:10px; left:16px; right:16px; }
+	.logline { color:var(--muted); }
+	.logline.ok { color:var(--green); }
+	.logline.bad { color:var(--red); }
+	#win { display:none; position:absolute; top:46%; left:50%; transform:translate(-50%,-50%);
+		background:#04140d; border:2px solid var(--green); border-radius:6px; padding:18px 34px;
+		text-align:center; }
+	#win h2 { margin:0; color:var(--green); font-size:22px; letter-spacing:3px; }
+	#win p { margin:6px 0 0; color:var(--muted); font-size:12px; }
+</style>
+</head>
+<body>
+	<div id="head">
+		<h1>PCFORGE</h1>
+		<span class="sub">every workload must pass at once</span>
+		<span class="money">cash <b id="budget">$0</b>
+			&nbsp; <span id="income">$0/h</span>
+			&nbsp; <span id="clock">0h</span>
+			&nbsp; debt <span id="debt">$0</span></span>
+	</div>
+
+	<div id="controls">
+		<label>resolution</label><select id="res"></select>
+		<label>quality</label><select id="qual"></select>
+		<label><input type="checkbox" id="rt"> ray tracing</label>
+		<label><input type="checkbox" id="hags"> HAGS</label>
+		<button id="payoff">PAY OFF DEBT</button>
+		<button id="reset">START OVER</button>
+	</div>
+
+	<div id="main">
+		<div class="col">
+			<h2 id="buildhead">The build</h2>
+			<div id="slots"></div>
+		</div>
+		<div class="col">
+			<h2>Earning</h2>
+			<div class="wgroup">the machine does one thing</div>
+			<div id="compute"></div>
+			<div class="wgroup">you do one thing &mdash; in parallel</div>
+			<div id="jobs"></div>
+		</div>
+		<div class="col">
+			<h2>Workloads</h2>
+			<div id="goalrow">
+				<span id="goal">0 / 6</span>
+				<div id="goaltrack"><div id="goalbar"></div></div>
+			</div>
+			<div id="post"></div>
+			<div id="board"></div>
+		</div>
+		<div class="col">
+			<h2 id="btitle">Breakdown</h2>
+			<canvas id="vrambar" width="292" height="40"></canvas>
+			<div id="demand"></div>
+			<h2 style="margin-top:10px">Frame rate</h2>
+			<div id="fpscalc"></div>
+			<div id="notes"></div>
+		</div>
+	</div>
+
+	<div id="win"><h2 id="wintitle">ALL PASS</h2><p>one build, every game, no frame-time spikes</p></div>
+	<div id="log"></div>
+
+	<script src="sim_core.js"></script>
+	<script src="ui.js"></script>
+</body>
+</html>
